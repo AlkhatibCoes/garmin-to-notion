@@ -1,0 +1,24 @@
+from datetime import datetime, timedelta
+from garminconnect import Garmin
+import os
+import json
+
+garmin = Garmin(os.getenv("GARMIN_EMAIL"), os.getenv("GARMIN_PASSWORD"))
+garmin.login()
+
+date = (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+print("🧪 Sleep Data:")
+print(json.dumps(garmin.get_sleep_data(date), indent=2))
+
+print("\n🧪 Wellness Data:")
+print(json.dumps(garmin.get_wellness_data(date), indent=2))
+
+print("\n🧪 Stress Data:")
+print(json.dumps(garmin.get_stress_data(date), indent=2))
+
+print("\n🧪 HRV Data:")
+try:
+    print(json.dumps(garmin.get_heart_rate_variability(date), indent=2))
+except Exception as e:
+    print(f"❌ HRV not available or endpoint failed: {e}")
