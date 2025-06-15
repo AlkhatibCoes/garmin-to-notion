@@ -4,6 +4,7 @@ from notion_client import Client
 from dotenv import load_dotenv
 import pytz
 import os
+import json
 
 # Load environment variables
 load_dotenv()
@@ -66,11 +67,14 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
         "Awake Time": {"rich_text": [{"text": {"content": format_duration(daily.get('awakeSleepSeconds', 0))}}]},
         "Resting HR": {"number": sleep_data.get('restingHeartRate', 0)},
         "Sleep Score": {"number": daily.get('sleepScore', 0)},
-        "HRV (ms)": {"number": hrv.get('avg', 0)},
-        "HRV Label": {"select": {"name": hrv.get('hrvStatus', {}).get('status', 'No Status')}},
-        "Night Stress": {"number": stress.get('sleepStress', 0)},
+        "HRV (ms)": {"number": hrv.get('avg', daily.get("hrvAvg", 0))},
+        "HRV Label": {"select": {"name": hrv.get('hrvStatus', {}).get('status', daily.get("hrvStatus", "No Status"))}},
+        "Night Stress": {"number": stress.get('sleepStress', daily.get("stressDuration", 0))},
         "Yesterday’s Stress": {"number": yesterday_stress or 0}
     }
+
+    print("🔍 Notion properties preview:")
+    print(json.dumps(properties, indent=2))
 
     try:
         client.pages.create(
@@ -100,6 +104,9 @@ def main():
         date = datetime.today() - timedelta(days=i)
         try:
             data = garmin.get_sleep_data(date.strftime("%Y-%m-%d"))
+            print(f"📅 Fetched sleep data for {date.strftime('%Y-%m-%d')}")
+            print(json.dumps(data, indent=2))  # Debug output for Garmin API
+
             if data:
                 sleep_date = data.get('dailySleepDTO', {}).get('calendarDate')
                 if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
