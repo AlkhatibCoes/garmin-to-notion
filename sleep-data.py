@@ -30,21 +30,23 @@ def sleep_data_exists(client, database_id, sleep_date):
         database_id=database_id,
         filter={"property": "Long Date", "date": {"equals": sleep_date}}
     )
-    return query.get('results', [None])[0]
+    results = query.get('results', [])
+    return results[0] if results else None
 
 def create_sleep_entry(client, database_id, sleep_data):
     daily = sleep_data.get('dailySleepDTO', {})
     hrv = sleep_data.get('hrvSummaryDTO', {})
     stress = sleep_data.get('wellnessDTO', {})
 
-    if not daily:
+    if not daily or not daily.get('sleepStartTimestampGMT'):
+        print("⏭️ Skipping record: missing sleep session data.")
         return
 
     sleep_date = daily.get('calendarDate', "Unknown Date")
     total_sleep = sum((daily.get(k, 0) or 0) for k in ['deepSleepSeconds', 'lightSleepSeconds', 'remSleepSeconds'])
 
     if total_sleep == 0:
-        print(f"Skipping zero sleep day: {sleep_date}")
+        print(f"⏭️ Skipping zero sleep day: {sleep_date}")
         return
 
     properties = {
@@ -69,12 +71,15 @@ def create_sleep_entry(client, database_id, sleep_data):
         "Night Stress": {"number": stress.get('sleepStress', 0)}
     }
 
-    client.pages.create(
-        parent={"database_id": database_id},
-        properties=properties,
-        icon={"emoji": "😴"}
-    )
-    print(f"✅ Created entry for {sleep_date}")
+    try:
+        client.pages.create(
+            parent={"database_id": database_id},
+            properties=properties,
+            icon={"emoji": "😴"}
+        )
+        print(f"✅ Created entry for {sleep_date}")
+    except Exception as e:
+        print(f"❌ Error creating entry for {sleep_date}: {e}")
 
 def main():
     garmin_email = os.getenv("GARMIN_EMAIL")
@@ -86,14 +91,16 @@ def main():
     garmin.login()
     client = Client(auth=notion_token)
 
-    for i in range(100):
+    for i in range(5):  # Fetch past 5 days for testing
         date = datetime.today() - timedelta(days=i)
-        data = garmin.get_sleep_data(date.strftime("%Y-%m-%d"))
-
-        if data:
-            sleep_date = data.get('dailySleepDTO', {}).get('calendarDate')
-            if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
-                create_sleep_entry(client, database_id, data)
+        try:
+            data = garmin.get_sleep_data(date.strftime("%Y-%m-%d"))
+            if data:
+                sleep_date = data.get('dailySleepDTO', {}).get('calendarDate')
+                if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
+                    create_sleep_entry(client, database_id, data)
+        except Exception as e:
+            print(f"⚠️ Failed on {date.strftime('%Y-%m-%d')}: {e}")
 
 if __name__ == '__main__':
     main()
