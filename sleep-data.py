@@ -75,7 +75,7 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
         "HRV (ms)": {"number": daily.get("avgOvernightHrv", 0)},
         "HRV Label": {"select": {"name": daily.get("hrvStatus", "No Status")}},
         "Night Stress": {"number": daily.get('avgSleepStress', 0)},
-        "Yesterday’s Stress": {"number": yesterday_stress or 0}
+        "Yesterdays Stress": {"number": yesterday_stress or 0}
     }
 
     print("🔍 Notion properties preview:")
