@@ -66,10 +66,10 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
         "REM Sleep": {"rich_text": [{"text": {"content": format_duration(daily.get('remSleepSeconds', 0))}}]},
         "Awake Time": {"rich_text": [{"text": {"content": format_duration(daily.get('awakeSleepSeconds', 0))}}]},
         "Resting HR": {"number": sleep_data.get('restingHeartRate', 0)},
-        "Sleep Score": {"number": daily.get('sleepScores', {}).get('overall', {}).get('value', 0)},
-        "HRV (ms)": {"number": hrv.get('avg', None) or daily.get("hrvAvg", 0)},
+        "Sleep Score": {"number": daily.get('sleepScores', {}).get('overallScore', 0)},
+        "HRV (ms)": {"number": hrv.get('avg', daily.get("hrvAvg", 0))},
         "HRV Label": {"select": {"name": hrv.get('hrvStatus', {}).get('status', "No Status")}},
-        "Night Stress": {"number": daily.get('avgSleepStress', 0)},
+        "Night Stress": {"number": stress.get('avgStressLevelSleep', 0)},
         "Yesterday’s Stress": {"number": yesterday_stress or 0}
     }
 
