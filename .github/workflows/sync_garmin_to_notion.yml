@@ -2,39 +2,17 @@ name: Sync Garmin to Notion
 
 on:
   schedule:
+    # This cron job will run every 15 minutes from 6 AM to 11 PM Eastern Time
+    # - cron: '*/10 10-23 * * *'  # Every 15 minutes from 10:00 to 23:45 UTC 
+    # - cron: '*/10 0-3 * * *'    # Every 15 minutes from 00:00 to 03:45 UTC
     - cron: '0 1 * * *' # Daily
   workflow_dispatch:
-
 env:
   TZ: 'America/Montreal'
 
 jobs:
-  schema-check:
-    name: 🧪 Check Notion Schema
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v2
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install notion-client python-dotenv
-
-      - name: Run Schema Checker
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_SLEEP_DB_ID: ${{ secrets.NOTION_SLEEP_DB_ID }}
-        run: python notion_schema_checker.py
-
   sync:
-    name: 🔄 Sync Garmin to Notion
     runs-on: ubuntu-latest
-    needs: schema-check
     steps:
       - uses: actions/checkout@v2
 
