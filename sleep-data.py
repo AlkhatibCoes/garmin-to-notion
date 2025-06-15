@@ -83,4 +83,45 @@ def create_sleep_data(client, database_id, sleep_data, skip_zero_sleep=True):
         "Deep Sleep": {"rich_text": [{"text": {"content": format_duration(daily_sleep.get('deepSleepSeconds', 0))}}]},
         "REM Sleep": {"rich_text": [{"text": {"content": format_duration(daily_sleep.get('remSleepSeconds', 0))}}]},
         "Awake Time": {"rich_text": [{"text": {"content": format_duration(daily_sleep.get('awakeSleepSeconds', 0))}}]},
-        "Resting HR": {"number": sleep_data.get('restingHeartR_
+        "Resting HR": {"number": sleep_data.get('restingHeartRate', 0)}
+    }
+
+    try:
+        client.pages.create(
+            parent={"database_id": database_id},
+            properties=properties,
+            icon={"emoji": "😴"}
+        )
+        print(f"✅ Created sleep entry for: {sleep_date}")
+    except Exception as e:
+        print(f"❌ Error creating Notion sleep entry for {sleep_date}: {e}")
+
+def main():
+    # Load credentials
+    garmin_email = os.getenv("GARMIN_EMAIL")
+    garmin_password = os.getenv("GARMIN_PASSWORD")
+    notion_token = os.getenv("NOTION_TOKEN")
+    database_id = os.getenv("NOTION_SLEEP_DB_ID")
+
+    # Initialize clients
+    garmin = Garmin(garmin_email, garmin_password)
+    garmin.login()
+    client = Client(auth=notion_token)
+
+    # Sync last 100 days
+    days_back = 100
+    today = datetime.today().date()
+
+    for i in range(days_back):
+        date_to_fetch = today - timedelta(days=i)
+        date_str = date_to_fetch.isoformat()
+
+        print(f"🔍 Fetching sleep data for {date_str}...")
+        data = get_sleep_data_for_date(garmin, date_str)
+        if data:
+            sleep_date = data.get('dailySleepDTO', {}).get('calendarDate')
+            if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
+                create_sleep_data(client, database_id, data)
+
+if __name__ == '__main__':
+    main()
