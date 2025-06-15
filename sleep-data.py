@@ -69,11 +69,14 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
         "Yesterdays Stress": {"number": yesterday_stress or 0}
     }
 
-    client.pages.create(
-        parent={"database_id": database_id},
-        properties=properties,
-        icon={"emoji": "😴"}
-    )
+    try:
+        client.pages.create(
+            parent={"database_id": database_id},
+            properties=properties,
+            icon={"emoji": "😴"}
+        )
+    except Exception as e:
+        print(f"❌ Error creating entry for {sleep_date}: {e}")
 
 def main():
     garmin_email = os.getenv("GARMIN_EMAIL")
@@ -85,20 +88,23 @@ def main():
     garmin.login()
     client = Client(auth=notion_token)
 
-    yesterday = datetime.today() - timedelta(days=1)
-    yesterday_stress_data = garmin.get_stress_data(yesterday.strftime("%Y-%m-%d"))
-    yesterday_stress = yesterday_stress_data.get('avgStressLevel', 0)
-
     for i in range(5):  # Fetch past 5 days for testing
         date = datetime.today() - timedelta(days=i)
+        date_str = date.strftime("%Y-%m-%d")
+        yesterday = date - timedelta(days=1)
+
         try:
-            data = garmin.get_sleep_data(date.strftime("%Y-%m-%d"))
+            data = garmin.get_sleep_data(date_str)
+            yesterday_stress_data = garmin.get_stress_data(yesterday.strftime("%Y-%m-%d"))
+            yesterday_stress = yesterday_stress_data.get('avgStressLevel', 0)
+
             if data:
                 sleep_date = data.get('dailySleepDTO', {}).get('calendarDate')
                 if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
                     create_sleep_entry(client, database_id, data, yesterday_stress)
         except Exception as e:
-            pass
+            print(f"⚠️ Failed on {date_str}: {e}")
 
 if __name__ == '__main__':
     main()
+
