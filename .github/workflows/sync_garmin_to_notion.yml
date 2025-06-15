@@ -8,7 +8,7 @@ on:
     - cron: '0 1 * * *' # Daily
   workflow_dispatch:
 env:
-  TZ: 'America/Montreal'
+  TZ: 'Europe/Berlin'
 
 jobs:
   sync:
