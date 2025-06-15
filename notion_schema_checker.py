@@ -1,18 +1,36 @@
-import os
-from notion_client import Client
+from datetime import datetime, timedelta
+from garminconnect import Garmin
 from dotenv import load_dotenv
+import os
 import json
 
+# Load environment variables
 load_dotenv()
-notion_token = os.getenv("NOTION_TOKEN")
-database_id = os.getenv("NOTION_SLEEP_DB_ID")
 
-client = Client(auth=notion_token)
+def main():
+    garmin_email = os.getenv("GARMIN_EMAIL")
+    garmin_password = os.getenv("GARMIN_PASSWORD")
 
-try:
-    response = client.databases.retrieve(database_id=database_id)
-    print("\n📘 Notion Database Schema:")
-    for prop_name, prop in response['properties'].items():
-        print(f"- {prop_name}: {prop['type']}")
-except Exception as e:
-    print("❌ Failed to fetch schema:", e)
+    # Authenticate with Garmin
+    garmin = Garmin(garmin_email, garmin_password)
+    garmin.login()
+
+    # Target date (yesterday for consistency with sleep reporting)
+    target_date = (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    print("\n== Raw Garmin Sleep Data ==")
+    try:
+        sleep_data = garmin.get_sleep_data(target_date)
+        print(json.dumps(sleep_data, indent=2))
+    except Exception as e:
+        print(f"⚠️ Error fetching sleep data: {e}")
+
+    print("\n== Raw Garmin Stress Data ==")
+    try:
+        stress_data = garmin.get_stress_data(target_date)
+        print(json.dumps(stress_data, indent=2))
+    except Exception as e:
+        print(f"⚠️ Error fetching stress data: {e}")
+
+if __name__ == '__main__':
+    main()
