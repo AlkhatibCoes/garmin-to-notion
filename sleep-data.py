@@ -50,6 +50,12 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
         print(f"⏭️ Skipping zero sleep day: {sleep_date}")
         return
 
+    print("🧪 Verifying new metrics:")
+    print("Sleep Score:", daily.get('sleepScores', {}).get('overall', {}).get('value'))
+    print("HRV:", hrv.get('avg') or daily.get("hrvAvg", 0))
+    print("HRV Label:", hrv.get('hrvStatus', {}).get('status', "No Status"))
+    print("Night Stress:", stress.get('avgStressLevelSleep', 0))
+
     properties = {
         "Date": {"title": [{"text": {"content": format_date_for_name(sleep_date)}}]},
         "Times": {"rich_text": [{"text": {"content": f"{format_time_readable(daily.get('sleepStartTimestampGMT'))} → {format_time_readable(daily.get('sleepEndTimestampGMT'))}"}}]},
@@ -66,8 +72,8 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
         "REM Sleep": {"rich_text": [{"text": {"content": format_duration(daily.get('remSleepSeconds', 0))}}]},
         "Awake Time": {"rich_text": [{"text": {"content": format_duration(daily.get('awakeSleepSeconds', 0))}}]},
         "Resting HR": {"number": sleep_data.get('restingHeartRate', 0)},
-        "Sleep Score": {"number": daily.get('sleepScores', {}).get('overallScore', 0)},
-        "HRV (ms)": {"number": hrv.get('avg', daily.get("hrvAvg", 0))},
+        "Sleep Score": {"number": daily.get('sleepScores', {}).get('overall', {}).get('value', 0)},
+        "HRV (ms)": {"number": hrv.get('avg') or daily.get("hrvAvg", 0)},
         "HRV Label": {"select": {"name": hrv.get('hrvStatus', {}).get('status', "No Status")}},
         "Night Stress": {"number": stress.get('avgStressLevelSleep', 0)},
         "Yesterday’s Stress": {"number": yesterday_stress or 0}
