@@ -267,7 +267,7 @@ def main():
     client = Client(auth=notion_token)
     
     # Get all activities
-    activities = get_all_activities(garmin)
+    activities = get_all_activities(garmin, limit=10)
 
     # Process all activities
     for activity in activities:
