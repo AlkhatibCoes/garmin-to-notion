@@ -50,7 +50,7 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
         print(f"⏭️ Skipping zero sleep day: {sleep_date}")
         return
 
-    print("🧪 Verifying new metrics:")
+    print("\n📦 Verifying new metrics:")
     print("Sleep Score:", daily.get('sleepScores', {}).get('overall', {}).get('value'))
     print("HRV:", hrv.get('avg') or daily.get("hrvAvg", 0))
     print("HRV Label:", hrv.get('hrvStatus', {}).get('status', "No Status"))
@@ -76,11 +76,8 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
         "HRV (ms)": {"number": hrv.get('avg') or daily.get("hrvAvg", 0)},
         "HRV Label": {"select": {"name": hrv.get('hrvStatus', {}).get('status', "No Status")}},
         "Night Stress": {"number": stress.get('avgStressLevelSleep', 0)},
-        "Yesterday’s Stress": {"number": yesterday_stress or 0}
+        "Yesterdays Stress": {"number": yesterday_stress or 0}
     }
-
-    print("🔍 Notion properties preview:")
-    print(json.dumps(properties, indent=2))
 
     try:
         client.pages.create(
@@ -102,23 +99,31 @@ def main():
     garmin.login()
     client = Client(auth=notion_token)
 
-    yesterday = datetime.today() - timedelta(days=1)
-    yesterday_stress_data = garmin.get_stress_data(yesterday.strftime("%Y-%m-%d"))
-    yesterday_stress = yesterday_stress_data.get('avgStressLevel', 0)
-
-    for i in range(5):  # Fetch past 5 days for testing
+    for i in range(5):  # Fetch past 5 days
         date = datetime.today() - timedelta(days=i)
-        try:
-            data = garmin.get_sleep_data(date.strftime("%Y-%m-%d"))
-            print(f"📅 Fetched sleep data for {date.strftime('%Y-%m-%d')}")
-            print(json.dumps(data, indent=2))  # Debug output for Garmin API
+        date_str = date.strftime("%Y-%m-%d")
 
-            if data:
-                sleep_date = data.get('dailySleepDTO', {}).get('calendarDate')
+        try:
+            sleep_data = garmin.get_sleep_data(date_str)
+            stress_data = garmin.get_stress_data(date_str)
+            yesterday_stress = stress_data.get('avgStressLevel', 0)
+
+            print(f"\n📅 {date_str} - Raw Garmin Data Preview:")
+            print(json.dumps({
+                "hrvSummaryDTO": sleep_data.get("hrvSummaryDTO"),
+                "wellnessDTO": sleep_data.get("wellnessDTO"),
+                "dailySleepDTO.sleepScores": sleep_data.get("dailySleepDTO", {}).get("sleepScores"),
+                "restingHeartRate": sleep_data.get("restingHeartRate"),
+                "stressData": stress_data
+            }, indent=2))
+
+            if sleep_data:
+                sleep_date = sleep_data.get('dailySleepDTO', {}).get('calendarDate')
                 if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
-                    create_sleep_entry(client, database_id, data, yesterday_stress)
+                    create_sleep_entry(client, database_id, sleep_data, yesterday_stress)
+
         except Exception as e:
-            print(f"⚠️ Failed on {date.strftime('%Y-%m-%d')}: {e}")
+            print(f"⚠️ Failed on {date_str}: {e}")
 
 if __name__ == '__main__':
     main()
