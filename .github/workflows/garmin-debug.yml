@@ -1,24 +1,31 @@
-from datetime import datetime, timedelta
-from garminconnect import Garmin
-import os
-import json
+name: Debug Garmin Endpoints
 
-garmin = Garmin(os.getenv("GARMIN_EMAIL"), os.getenv("GARMIN_PASSWORD"))
-garmin.login()
+on:
+  workflow_dispatch:
 
-date = (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+env:
+  TZ: 'Europe/Berlin'
 
-print("🧪 Sleep Data:")
-print(json.dumps(garmin.get_sleep_data(date), indent=2))
+jobs:
+  debug:
+    runs-on: ubuntu-latest
 
-print("\n🧪 Wellness Data:")
-print(json.dumps(garmin.get_wellness_data(date), indent=2))
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-print("\n🧪 Stress Data:")
-print(json.dumps(garmin.get_stress_data(date), indent=2))
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-print("\n🧪 HRV Data:")
-try:
-    print(json.dumps(garmin.get_heart_rate_variability(date), indent=2))
-except Exception as e:
-    print(f"❌ HRV not available or endpoint failed: {e}")
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Garmin Debug Script
+        env:
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+        run: |
+          python garmin-debug-print.py
