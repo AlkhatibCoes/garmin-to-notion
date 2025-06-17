@@ -19,26 +19,26 @@ try:
 
     total_kcal = summary.get('totalKilocalories')
     consumed_kcal = summary.get('consumedKilocalories')
-    remaining_kcal = summary.get('remainingKilocalories')
     active_kcal = summary.get('activeKilocalories')
     mod_min = summary.get('moderateIntensityMinutes')
     vig_min = summary.get('vigorousIntensityMinutes')
 
-    # Calculate custom calorie balance (surplus/deficit)
+    # Calculate absolute and % calorie balance
     if total_kcal is not None and consumed_kcal is not None:
         calorie_balance = consumed_kcal - total_kcal
+        calorie_percent = round(abs(calorie_balance) / total_kcal * 100)
     else:
         calorie_balance = None
+        calorie_percent = None
 
     print("\n🔥 Calories:")
     print(f"   - Total Calories Burned: {total_kcal} kcal")
     print(f"   - Consumed Calories: {consumed_kcal} kcal")
-    print(f"   - Remaining Calories: {remaining_kcal} kcal")
     print(f"   - Active Calories: {active_kcal} kcal")
 
-    if calorie_balance is not None:
+    if calorie_balance is not None and calorie_percent is not None:
         label = "Surplus" if calorie_balance > 0 else "Deficit"
-        print(f"   - Calorie {label}: {abs(calorie_balance)} kcal")
+        print(f"   - Calorie {label}: {abs(calorie_balance)} kcal ({calorie_percent}%)")
     else:
         print("   - Calorie Balance: Not available")
 
