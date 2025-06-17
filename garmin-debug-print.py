@@ -40,3 +40,12 @@ try:
     print(f"   - Total: {hydration_ml if hydration_ml is not None else 'No hydration data found'} mL")
 except Exception as e:
     print(f"⚠️ Error fetching hydration: {e}")
+
+# === 7-Day Avg Resting Heart Rate ===
+try:
+    hr = garmin.get_heart_rates(date_str)
+    avg_rhr_7d = hr.get("lastSevenDaysAvgRestingHeartRate")
+    print("\n❤️ 7-Day Avg Resting HR:")
+    print(f"   - {avg_rhr_7d} bpm")
+except Exception as e:
+    print(f"⚠️ Error fetching heart rate data: {e}")
