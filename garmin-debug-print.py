@@ -23,7 +23,7 @@ try:
     mod_min = summary.get('moderateIntensityMinutes')
     vig_min = summary.get('vigorousIntensityMinutes')
 
-    # Calculate absolute and % calorie balance
+    # Calculate calorie balance
     if total_kcal is not None and consumed_kcal is not None:
         calorie_balance = consumed_kcal - total_kcal
         calorie_percent = round(abs(calorie_balance) / total_kcal * 100)
@@ -66,3 +66,16 @@ try:
     print(f"   - {avg_rhr_7d} bpm")
 except Exception as e:
     print(f"⚠️ Error fetching heart rate data: {e}")
+
+# === Body Composition: Weight ===
+try:
+    body = garmin.get_body_composition()
+    if isinstance(body, list) and len(body) > 0:
+        latest_weight = body[0].get("weight")
+        print("\n⚖️ Weight:")
+        print(f"   - {latest_weight / 1000:.1f} kg")  # Garmin returns weight in grams
+    else:
+        print("\n⚖️ Weight: No weight data found")
+except Exception as e:
+    print(f"⚠️ Error fetching weight data: {e}")
+
