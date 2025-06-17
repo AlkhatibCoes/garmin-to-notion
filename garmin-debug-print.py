@@ -14,7 +14,7 @@ date = datetime.today() - timedelta(days=1)
 date_str = date.strftime("%Y-%m-%d")
 print(f"\n📅 Garmin Debug Data for: {date_str}")
 
-# List of Garmin endpoints to test
+# Dictionary of endpoints to fetch
 endpoints = {
     "Steps": lambda: garmin.get_steps_data(date_str),
     "Daily Summary Stats": lambda: garmin.get_stats(date_str),
@@ -26,5 +26,16 @@ endpoints = {
     "HRV": lambda: garmin.get_hrv_data(date_str),
     "Pulse Ox": lambda: garmin.get_pulseox_data(date_str),
     "Wellness": lambda: garmin.get_wellness_data(date_str),
-    "User Summary": lamb
+    "User Summary": lambda: garmin.get_user_summary(date_str),
+    "Hydration": lambda: garmin.get_hydration_data(date_str),
+    "Activities": lambda: garmin.get_activities(date_str, 1)
+}
 
+# Run each and print results
+for name, func in endpoints.items():
+    try:
+        print(f"\n== {name} ==")
+        data = func()
+        print(json.dumps(data, indent=2))
+    except Exception as e:
+        print(f"⚠️ Failed to fetch {name}: {e}")
