@@ -69,13 +69,12 @@ except Exception as e:
 
 # === Body Composition: Weight ===
 try:
-    body = garmin.get_body_composition()
+    body = garmin.get_body_composition(date_str, date_str)  # start and end are the same for 1-day check
     if isinstance(body, list) and len(body) > 0:
         latest_weight = body[0].get("weight")
         print("\n⚖️ Weight:")
-        print(f"   - {latest_weight / 1000:.1f} kg")  # Garmin returns weight in grams
+        print(f"   - {latest_weight / 1000:.1f} kg")  # weight is in grams
     else:
         print("\n⚖️ Weight: No weight data found")
 except Exception as e:
     print(f"⚠️ Error fetching weight data: {e}")
-
