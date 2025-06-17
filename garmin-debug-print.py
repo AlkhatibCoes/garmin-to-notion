@@ -17,22 +17,39 @@ print(f"\n📅 Garmin Data for: {date_str}")
 try:
     summary = garmin.get_user_summary(date_str)
 
+    total_kcal = summary.get('totalKilocalories')
+    consumed_kcal = summary.get('consumedKilocalories')
+    remaining_kcal = summary.get('remainingKilocalories')
+    active_kcal = summary.get('activeKilocalories')
+    mod_min = summary.get('moderateIntensityMinutes')
+    vig_min = summary.get('vigorousIntensityMinutes')
+
+    # Calculate custom calorie balance (surplus/deficit)
+    if total_kcal is not None and consumed_kcal is not None:
+        calorie_balance = consumed_kcal - total_kcal
+    else:
+        calorie_balance = None
+
     print("\n🔥 Calories:")
-    print(f"   - Total Calories Burned: {summary.get('totalKilocalories')} kcal")
-    print(f"   - Wellness Calories: {summary.get('wellnessKilocalories')} kcal")
-    print(f"   - Consumed Calories: {summary.get('consumedKilocalories')} kcal")
-    print(f"   - Remaining Calories: {summary.get('remainingKilocalories')} kcal")
-    print(f"   - Active Calories: {summary.get('activeKilocalories')} kcal")
-    print(f"   - BMR (Resting): {summary.get('bmrKilocalories')} kcal")
+    print(f"   - Total Calories Burned: {total_kcal} kcal")
+    print(f"   - Consumed Calories: {consumed_kcal} kcal")
+    print(f"   - Remaining Calories: {remaining_kcal} kcal")
+    print(f"   - Active Calories: {active_kcal} kcal")
+
+    if calorie_balance is not None:
+        label = "Surplus" if calorie_balance > 0 else "Deficit"
+        print(f"   - Calorie {label}: {abs(calorie_balance)} kcal")
+    else:
+        print("   - Calorie Balance: Not available")
 
     print("\n💪 Intensity Minutes:")
-    print(f"   - Moderate: {summary.get('moderateIntensityMinutes')} min")
-    print(f"   - Vigorous: {summary.get('vigorousIntensityMinutes')} min")
+    print(f"   - Moderate: {mod_min} min")
+    print(f"   - Vigorous: {vig_min} min")
 
 except Exception as e:
     print(f"⚠️ Error fetching user summary: {e}")
 
-# === Hydration (corrected key: valueInML) ===
+# === Hydration ===
 try:
     hydration = garmin.get_hydration_data(date_str)
     hydration_ml = hydration.get("valueInML")
