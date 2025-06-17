@@ -2,7 +2,6 @@ from garminconnect import Garmin
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import os
-from pprint import pprint
 
 # Load credentials
 load_dotenv()
@@ -68,13 +67,15 @@ try:
 except Exception as e:
     print(f"⚠️ Error fetching heart rate data: {e}")
 
-# === Body Composition: Raw Field Dump ===
+# === Body Composition: Weight ===
 try:
-    body = garmin.get_body_composition(date_str, date_str)
-    print("\n📦 Raw Body Composition Data:")
+    body = garmin.get_body_composition(date_str, date_str)  # start and end are the same for 1-day check
     if isinstance(body, list) and len(body) > 0:
-        pprint(body[0])  # Inspect first entry’s field names
+        latest_weight = body[0].get("weight")
+        print("\n⚖️ Weight:")
+        print(f"   - {latest_weight / 1000:.1f} kg")  # weight is in grams
     else:
-        print("No body composition data returned.")
+        print("\n⚖️ Weight: No weight data found")
 except Exception as e:
     print(f"⚠️ Error fetching weight data: {e}")
+
