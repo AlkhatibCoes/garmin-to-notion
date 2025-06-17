@@ -3,10 +3,8 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import os
 
-# Load environment variables
+# Load credentials
 load_dotenv()
-
-# Login to Garmin
 garmin = Garmin(os.getenv("GARMIN_EMAIL"), os.getenv("GARMIN_PASSWORD"))
 garmin.login()
 
@@ -15,13 +13,15 @@ date = datetime.today() - timedelta(days=1)
 date_str = date.strftime("%Y-%m-%d")
 print(f"\n📅 Garmin Data for: {date_str}")
 
-# === 1. Calories & Intensity from correct endpoint ===
+# === Summary Data ===
 try:
     summary = garmin.get_user_summary(date_str)
 
     print("\n🔥 Calories:")
-    print(f"   - Total Calories: {summary.get('calories')} kcal")
-    print(f"   - Burned (Total): {summary.get('burnedKilocalories')} kcal")
+    print(f"   - Total Calories Burned: {summary.get('totalKilocalories')} kcal")
+    print(f"   - Wellness Calories: {summary.get('wellnessKilocalories')} kcal")
+    print(f"   - Consumed Calories: {summary.get('consumedKilocalories')} kcal")
+    print(f"   - Remaining Calories: {summary.get('remainingKilocalories')} kcal")
     print(f"   - Active Calories: {summary.get('activeKilocalories')} kcal")
     print(f"   - BMR (Resting): {summary.get('bmrKilocalories')} kcal")
 
@@ -32,10 +32,11 @@ try:
 except Exception as e:
     print(f"⚠️ Error fetching user summary: {e}")
 
-# === 2. Hydration ===
+# === Hydration Data ===
 try:
     hydration = garmin.get_hydration_data(date_str)
+    hydration_ml = hydration.get("totalHydration")
     print("\n💧 Hydration:")
-    print(f"   - Total: {hydration.get('totalHydration')} mL")
+    print(f"   - Total: {hydration_ml if hydration_ml is not None else 'No hydration data found'} mL")
 except Exception as e:
     print(f"⚠️ Error fetching hydration: {e}")
