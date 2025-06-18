@@ -34,7 +34,7 @@ def sleep_data_exists(client, database_id, sleep_date):
     results = query.get('results', [])
     return results[0] if results else None
 
-def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
+def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None, summary=None, hydration_ml=None, weight_kg=None, avg_rhr_7d=None):
     daily = sleep_data.get('dailySleepDTO', {})
 
     if not daily or not daily.get('sleepStartTimestampGMT'):
@@ -45,6 +45,15 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
 
     if total_sleep == 0:
         return
+
+    calorie_balance = None
+    calorie_percent = None
+    if summary:
+        total_kcal = summary.get('totalKilocalories', 0)
+        consumed_kcal = summary.get('consumedKilocalories', 0)
+        if total_kcal:
+            calorie_balance = consumed_kcal - total_kcal
+            calorie_percent = round(abs(calorie_balance) / total_kcal * 100)
 
     properties = {
         "Date": {"title": [{"text": {"content": format_date_for_name(sleep_date)}}]},
@@ -66,7 +75,16 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None):
         "HRV (ms)": {"number": sleep_data.get('avgOvernightHrv', 0)},
         "HRV Label": {"select": {"name": sleep_data.get('hrvStatus', "No Status")}},
         "Night Stress": {"number": daily.get('avgSleepStress', 0)},
-        "Yesterdays Stress": {"number": yesterday_stress or 0}
+        "Yesterdays Stress": {"number": yesterday_stress or 0},
+        "Total Calories Burned (kcal)": {"number": summary.get('totalKilocalories', 0) if summary else 0},
+        "Consumed Calories (kcal)": {"number": summary.get('consumedKilocalories', 0) if summary else 0},
+        "Calorie Surplus / Deficit (kcal)": {"number": calorie_balance if calorie_balance is not None else 0},
+        "Calorie Deficit (%)": {"number": calorie_percent if calorie_percent is not None else 0},
+        "Intensity Minutes (Moderate)": {"number": summary.get('moderateIntensityMinutes', 0) if summary else 0},
+        "Intensity Minutes (Vigorous)": {"number": summary.get('vigorousIntensityMinutes', 0) if summary else 0},
+        "Hydration (ml)": {"number": hydration_ml or 0},
+        "Weight (kg)": {"number": weight_kg or 0},
+        "7-Day Avg Resting HR": {"number": avg_rhr_7d or 0}
     }
 
     try:
@@ -98,10 +116,20 @@ def main():
             yesterday_stress_data = garmin.get_stress_data(yesterday.strftime("%Y-%m-%d"))
             yesterday_stress = yesterday_stress_data.get('avgStressLevel', 0)
 
+            summary = garmin.get_user_summary(date_str)
+            hydration = garmin.get_hydration_data(date_str)
+            hydration_ml = hydration.get("valueInML", 0)
+
+            weight_data = garmin.get_body_composition(date_str, date_str)
+            weight_kg = weight_data[0].get("weight") / 1000 if weight_data else 0
+
+            hr = garmin.get_heart_rates(date_str)
+            avg_rhr_7d = hr.get("lastSevenDaysAvgRestingHeartRate", 0)
+
             if data:
                 sleep_date = data.get('dailySleepDTO', {}).get('calendarDate')
                 if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
-                    create_sleep_entry(client, database_id, data, yesterday_stress)
+                    create_sleep_entry(client, database_id, data, yesterday_stress, summary, hydration_ml, weight_kg, avg_rhr_7d)
         except Exception as e:
             print(f"⚠️ Failed on {date_str}: {e}")
 
