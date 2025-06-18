@@ -37,15 +37,16 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None, s
     daily = sleep_data.get('dailySleepDTO', {})
 
     if not daily or not daily.get('sleepStartTimestampGMT'):
+        print("❌ Missing essential sleep timing data.")
         return
 
     sleep_date = daily.get('calendarDate', "Unknown Date")
     total_sleep = sum((daily.get(k, 0) or 0) for k in ['deepSleepSeconds', 'lightSleepSeconds', 'remSleepSeconds'])
 
     if total_sleep == 0:
+        print("❌ Total sleep is 0, skipping entry.")
         return
 
-    # Calories & intensity minutes
     total_kcal = summary.get('totalKilocalories') if summary else None
     consumed_kcal = summary.get('consumedKilocalories') if summary else None
     active_kcal = summary.get('activeKilocalories') if summary else None
@@ -92,12 +93,14 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None, s
         "7-Day Avg Resting HR": {"number": avg_rhr_7d},
     }
 
+    print(f"📤 Creating Notion entry for {sleep_date} with data...")
     try:
         client.pages.create(
             parent={"database_id": database_id},
             properties=properties,
-            icon={"emoji": "🛌"}
+            icon={"emoji": "😴"}
         )
+        print(f"✅ Notion entry created for {sleep_date}")
     except Exception as e:
         print(f"❌ Error creating entry for {sleep_date}: {e}")
 
@@ -113,28 +116,36 @@ def main():
 
     try:
         sleep_data = garmin.get_sleep_data(date_str)
+        if not (isinstance(sleep_data, dict) and "dailySleepDTO" in sleep_data):
+            print(f"⚠️ No valid sleep data on {date_str}")
+            return
+
         stress_data = garmin.get_stress_data(yesterday.strftime("%Y-%m-%d"))
         yesterday_stress = stress_data.get("avgStressLevel", 0)
 
         summary = garmin.get_user_summary(date_str)
         hydration = garmin.get_hydration_data(date_str)
-        hydration_ml = hydration.get("valueInML")
+        hydration_ml = hydration.get("valueInML") if hydration else 0
 
         heart_data = garmin.get_heart_rates(date_str)
-        avg_rhr_7d = heart_data.get("lastSevenDaysAvgRestingHeartRate")
+        avg_rhr_7d = heart_data.get("lastSevenDaysAvgRestingHeartRate") if heart_data else 0
 
         body_data = garmin.get_body_composition(date_str, date_str)
-        weight_kg = body_data[0].get("weight") / 1000 if isinstance(body_data, list) and body_data else None
+        weight_kg = body_data[0].get("weight") / 1000 if isinstance(body_data, list) and body_data else 0
 
-        if sleep_data:
-            sleep_date = sleep_data.get("dailySleepDTO", {}).get("calendarDate")
-            if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
-                create_sleep_entry(client, database_id, sleep_data, yesterday_stress, summary, hydration_ml, weight_kg, avg_rhr_7d)
+        sleep_date = sleep_data.get("dailySleepDTO", {}).get("calendarDate")
+        print(f"📅 Processing sleep entry for {sleep_date}")
+
+        if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
+            create_sleep_entry(client, database_id, sleep_data, yesterday_stress, summary, hydration_ml, weight_kg, avg_rhr_7d)
+        else:
+            print(f"ℹ️ Entry already exists or missing sleep_date: {sleep_date}")
 
     except Exception as e:
         print(f"⚠️ Failed on {date_str}: {e}")
 
 if __name__ == '__main__':
     main()
+
 
 
