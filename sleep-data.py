@@ -4,7 +4,6 @@ from notion_client import Client
 from dotenv import load_dotenv
 import pytz
 import os
-import json
 
 # Load environment variables
 load_dotenv()
@@ -46,14 +45,19 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None, s
     if total_sleep == 0:
         return
 
-    calorie_balance = None
-    calorie_percent = None
-    if summary:
-        total_kcal = summary.get('totalKilocalories', 0)
-        consumed_kcal = summary.get('consumedKilocalories', 0)
-        if total_kcal:
-            calorie_balance = consumed_kcal - total_kcal
-            calorie_percent = round(abs(calorie_balance) / total_kcal * 100)
+    # Calories & intensity minutes
+    total_kcal = summary.get('totalKilocalories') if summary else None
+    consumed_kcal = summary.get('consumedKilocalories') if summary else None
+    active_kcal = summary.get('activeKilocalories') if summary else None
+    mod_min = summary.get('moderateIntensityMinutes') if summary else None
+    vig_min = summary.get('vigorousIntensityMinutes') if summary else None
+
+    if total_kcal is not None and consumed_kcal is not None:
+        calorie_balance = consumed_kcal - total_kcal
+        calorie_percent = round(abs(calorie_balance) / total_kcal * 100)
+    else:
+        calorie_balance = None
+        calorie_percent = None
 
     properties = {
         "Date": {"title": [{"text": {"content": format_date_for_name(sleep_date)}}]},
@@ -76,63 +80,61 @@ def create_sleep_entry(client, database_id, sleep_data, yesterday_stress=None, s
         "HRV Label": {"select": {"name": sleep_data.get('hrvStatus', "No Status")}},
         "Night Stress": {"number": daily.get('avgSleepStress', 0)},
         "Yesterdays Stress": {"number": yesterday_stress or 0},
-        "Total Calories Burned (kcal)": {"number": summary.get('totalKilocalories', 0) if summary else 0},
-        "Consumed Calories (kcal)": {"number": summary.get('consumedKilocalories', 0) if summary else 0},
-        "Calorie Surplus / Deficit (kcal)": {"number": calorie_balance if calorie_balance is not None else 0},
-        "Calorie Deficit (%)": {"number": calorie_percent if calorie_percent is not None else 0},
-        "Intensity Minutes (Moderate)": {"number": summary.get('moderateIntensityMinutes', 0) if summary else 0},
-        "Intensity Minutes (Vigorous)": {"number": summary.get('vigorousIntensityMinutes', 0) if summary else 0},
-        "Hydration (ml)": {"number": hydration_ml or 0},
-        "Weight (kg)": {"number": weight_kg or 0},
-        "7-Day Avg Resting HR": {"number": avg_rhr_7d or 0}
+        "Total Calories": {"number": total_kcal},
+        "Consumed Calories": {"number": consumed_kcal},
+        "Active Calories": {"number": active_kcal},
+        "Calorie Balance": {"number": calorie_balance},
+        "Calorie Deficit %": {"number": calorie_percent},
+        "Moderate Intensity Min": {"number": mod_min},
+        "Vigorous Intensity Min": {"number": vig_min},
+        "Hydration (ml)": {"number": hydration_ml},
+        "Weight (kg)": {"number": weight_kg},
+        "7-Day Avg Resting HR": {"number": avg_rhr_7d},
     }
 
     try:
         client.pages.create(
             parent={"database_id": database_id},
             properties=properties,
-            icon={"emoji": "😴"}
+            icon={"emoji": "🛌"}
         )
     except Exception as e:
         print(f"❌ Error creating entry for {sleep_date}: {e}")
 
 def main():
-    garmin_email = os.getenv("GARMIN_EMAIL")
-    garmin_password = os.getenv("GARMIN_PASSWORD")
-    notion_token = os.getenv("NOTION_TOKEN")
+    garmin = Garmin(os.getenv("GARMIN_EMAIL"), os.getenv("GARMIN_PASSWORD"))
+    garmin.login()
+    client = Client(auth=os.getenv("NOTION_TOKEN"))
     database_id = os.getenv("NOTION_SLEEP_DB_ID")
 
-    garmin = Garmin(garmin_email, garmin_password)
-    garmin.login()
-    client = Client(auth=notion_token)
+    date = datetime.today() - timedelta(days=1)
+    date_str = date.strftime("%Y-%m-%d")
+    yesterday = date - timedelta(days=1)
 
-    for i in range(5):  # Fetch past 5 days for testing
-        date = datetime.today() - timedelta(days=i)
-        date_str = date.strftime("%Y-%m-%d")
-        yesterday = date - timedelta(days=1)
+    try:
+        sleep_data = garmin.get_sleep_data(date_str)
+        stress_data = garmin.get_stress_data(yesterday.strftime("%Y-%m-%d"))
+        yesterday_stress = stress_data.get("avgStressLevel", 0)
 
-        try:
-            data = garmin.get_sleep_data(date_str)
-            yesterday_stress_data = garmin.get_stress_data(yesterday.strftime("%Y-%m-%d"))
-            yesterday_stress = yesterday_stress_data.get('avgStressLevel', 0)
+        summary = garmin.get_user_summary(date_str)
+        hydration = garmin.get_hydration_data(date_str)
+        hydration_ml = hydration.get("valueInML")
 
-            summary = garmin.get_user_summary(date_str)
-            hydration = garmin.get_hydration_data(date_str)
-            hydration_ml = hydration.get("valueInML", 0)
+        heart_data = garmin.get_heart_rates(date_str)
+        avg_rhr_7d = heart_data.get("lastSevenDaysAvgRestingHeartRate")
 
-            weight_data = garmin.get_body_composition(date_str, date_str)
-            weight_kg = weight_data[0].get("weight") / 1000 if weight_data else 0
+        body_data = garmin.get_body_composition(date_str, date_str)
+        weight_kg = body_data[0].get("weight") / 1000 if isinstance(body_data, list) and body_data else None
 
-            hr = garmin.get_heart_rates(date_str)
-            avg_rhr_7d = hr.get("lastSevenDaysAvgRestingHeartRate", 0)
+        if sleep_data:
+            sleep_date = sleep_data.get("dailySleepDTO", {}).get("calendarDate")
+            if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
+                create_sleep_entry(client, database_id, sleep_data, yesterday_stress, summary, hydration_ml, weight_kg, avg_rhr_7d)
 
-            if data:
-                sleep_date = data.get('dailySleepDTO', {}).get('calendarDate')
-                if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
-                    create_sleep_entry(client, database_id, data, yesterday_stress, summary, hydration_ml, weight_kg, avg_rhr_7d)
-        except Exception as e:
-            print(f"⚠️ Failed on {date_str}: {e}")
+    except Exception as e:
+        print(f"⚠️ Failed on {date_str}: {e}")
 
 if __name__ == '__main__':
     main()
+
 
