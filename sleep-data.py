@@ -136,7 +136,7 @@ def main():
         sleep_date = sleep_data.get("dailySleepDTO", {}).get("calendarDate")
         print(f"📅 Processing sleep entry for {sleep_date}")
 
-        if sleep_date and not sleep_data_exists(client, database_id, sleep_date):
+        if sleep_date:
             create_sleep_entry(client, database_id, sleep_data, yesterday_stress, summary, hydration_ml, weight_kg, avg_rhr_7d)
         else:
             print(f"ℹ️ Entry already exists or missing sleep_date: {sleep_date}")
@@ -146,6 +146,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
